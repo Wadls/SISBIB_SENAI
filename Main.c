@@ -231,7 +231,7 @@ void cadastrar(int tipo) {
                 fclose(arqAutor);
 
                 
-                printf("Escreva o Cod do Autor: \nSe não foi registrado, digite 0\n");
+                printf("Escreva o Cod do Autor: \nSe nao foi registrado, digite 0\n");
                 scanf("%d", &autorEscolhido);
                 limpar_buffer();
                     for (int j = 0; j < op; j++){
@@ -535,6 +535,6 @@ void excluir(int tipo) {
 int main(void){
     limpar_tela();
     garantir_arquivo();
-    listar(3);
+    cadastrar(3);
     
 }
