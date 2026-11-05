@@ -5,6 +5,7 @@
 #define ARQ_USUARIO   "usuarios.csv"   /* arquivo usuario */
 #define ARQ_AUTOR   "autores.csv"   /* arquivo autor */
 #define ARQ_LIVRO   "livros.csv"   /* arquivo livros */
+#define ARQ_EMP   "emprestimos.csv"   /* arquivo empréstimos */
 #define ARQ_TEMP  "temp.csv"     /* arquivo auxiliar */
 #define MAX_NOME  80
 #define COD_INICIAL  1000
@@ -26,6 +27,13 @@ typedef struct {
     int codAutores[3]; //Nome completo + Espaços
     int estoque;
 }Livro;
+typedef struct {
+    int cod;
+    int codAluno;
+    int codLivro[3]; //Cada usuário pode pegar no máximo 3 livros
+    int status;
+}Emprestimo;
+
 
 void limpar_tela(void);
 void limpar_buffer(void);
@@ -34,6 +42,13 @@ void excluirArquivo(int tipo);
 int listar(int tipo);
 void cadastrar(int tipo);
 void conversorCodAutor(char nomes[], int codAutores[]);
+void escolherAutor(int codAutores[]);
+int buscar_registro(const char *arquivo, int cod, char *linhaOut, size_t tam);
+int alterar_estoque(int codLivro, int delta);
+void devolver(void);
+void atualizar(int tipo);
+void excluir(int tipo);
+void garantir_arquivo(void);
 
 //Funções que Otimizam o Código
 void limpar_tela(void) {
@@ -76,6 +91,16 @@ void garantir_arquivo(void) {
     } else {
         fclose(arqLivro);
     }
+    FILE *arqEmp = fopen(ARQ_EMP, "r");
+    if (arqEmp == NULL) {
+        arqEmp = fopen(ARQ_EMP, "w");
+        if (arqEmp != NULL) {
+            fprintf(arqEmp, "cod;codAluno;livro1;livro2;livro3;status\n");
+            fclose(arqEmp);
+        }
+    } else {
+        fclose(arqEmp);
+    }
 }
 int prox_codigo(int tipo){//Esse Sistema Serve para Vasculhar o Arquivo e Atribuir o Valor de Forma Dinâmica
 
@@ -92,11 +117,14 @@ int prox_codigo(int tipo){//Esse Sistema Serve para Vasculhar o Arquivo e Atribu
         case 3:
             arq =  fopen(ARQ_LIVRO, "r");
             break;
+        case 4:
+            arq =  fopen(ARQ_EMP, "r");
+            break;
         default:
             return 0;
             break;
     }
-    //Case de Arquivo usuario
+
     
     
     //Programa Geralzão
@@ -169,10 +197,183 @@ void conversorCodAutor(char nomes[], int codAutores[]){
     }
     fclose(arqAutor);
 }
+void escolherAutor(int codAutores[]){
+    char linha[TAM_BUFFER];
+
+    for ( int i = 0; i < 3; i++)
+            {   
+                listar(2); //Além de Printar a lista de Autores, ele retorna a quantidade de autores, temos registrados
+                int  autorEscolhido, autorExiste = 0;
+                char operator;
+                //Função pra criar um array com todos os códigos dos autores
+
+                FILE *arqAutor = fopen(ARQ_AUTOR,"r");
+                 if (arqAutor == NULL) {
+                    printf("Erro ao abrir o arquivo %s.\n", ARQ_AUTOR);
+                    return;
+                }
+
+                printf("Escreva o Cod do Autor: \nSe nao foi registrado, digite 0\n");
+                scanf("%d", &autorEscolhido);
+                limpar_buffer();
+                char *token;
+                fgets(linha, sizeof(linha), arqAutor);//Pula o Cabeçalho
+                while (fgets(linha, sizeof(linha), arqAutor) != NULL) {
+                    token = strtok(linha, ";");//Pego o primeiro valor do arquivo Autor(Código), e coloco dentro do meu array
+                    if (token != NULL && autorEscolhido == atoi(token)){
+                        autorExiste = 1;
+                        codAutores[i] = autorEscolhido;
+
+                    };
+                }
+                fclose(arqAutor);
+                if (autorExiste){
+                    printf("Autor Adicionado com sucesso!");
+                }
+                else{
+                    printf("Cadastre o Novo Autor\n");
+                    cadastrar(2);
+                    autorEscolhido = prox_codigo(2) - 1; //Por meio desse método, adciono o código do último autor registrado
+                }
+
+                if (i < 2) {
+                    printf("Pretende listar mais algum autor?(S/N)\n");
+                    scanf(" %c", &operator);
+                    limpar_buffer();
+                    if (operator == 'N' || operator == 'n') break;
+                    limpar_tela();
+                }
+            }
+}
+/* Procura 'cod' na primeira coluna do arquivo. Se achar, copia a linha para linhaOut e retorna 1 */
+
+
+
+int buscar_registro(const char *arquivo, int cod, char *linhaOut, size_t tam) {
+    FILE *f = fopen(arquivo, "r");
+    if (f == NULL) return 0;
+
+    char linha[TAM_BUFFER];
+    int c;
+    while (fgets(linha, sizeof(linha), f) != NULL) {
+        linha[strcspn(linha, "\r\n")] = '\0';
+        if (sscanf(linha, "%d", &c) == 1 && c == cod) {
+            snprintf(linhaOut, tam, "%s", linha);
+            fclose(f);
+            return 1;
+        }
+    }
+    fclose(f);
+    return 0;
+}
+
+void devolver(void) {
+    char linha[TAM_BUFFER];
+    Emprestimo a;
+    int cod, devolvido = 0, encontrado = 0;
+    int livrosDevolvidos[3] = {0, 0, 0};
+
+    FILE *arq = fopen(ARQ_EMP, "r");
+    FILE *temp = fopen(ARQ_TEMP, "w");
+    if (arq == NULL || temp == NULL) {
+        printf("Erro ao abrir os arquivos.\n");
+        if (arq) fclose(arq);
+        if (temp) fclose(temp);
+        return;
+    }
+
+    listar(4);
+    printf("Cod do Emprestimo a devolver: ");
+    scanf("%d", &cod);
+    limpar_buffer();
+
+    fgets(linha, sizeof(linha), arq);   /* cabeçalho */
+    fputs(linha, temp);
+
+    while (fgets(linha, sizeof(linha), arq) != NULL) {
+        linha[strcspn(linha, "\r\n")] = '\0';
+
+        a.codLivro[0] = a.codLivro[1] = a.codLivro[2] = 0;
+        if (sscanf(linha, "%d;%d;%d;%d;%d;%d", &a.cod, &a.codAluno,
+                   &a.codLivro[0], &a.codLivro[1], &a.codLivro[2], &a.status) != 6)
+            continue;
+
+        if (a.cod == cod) {
+            encontrado = 1;
+            if (a.status == 1) {
+                printf("Esse emprestimo ja foi devolvido.\n");
+            } else {
+                a.status = 1;
+                devolvido = 1;
+                for (int i = 0; i < 3; i++)          /* guarda os livros */
+                    livrosDevolvidos[i] = a.codLivro[i];
+            }
+        }
+        fprintf(temp, "%d;%d;%d;%d;%d;%d\n", a.cod, a.codAluno,
+                a.codLivro[0], a.codLivro[1], a.codLivro[2], a.status);
+    }
+    fclose(arq);
+    fclose(temp);
+
+    if (devolvido) {
+        remove(ARQ_EMP);
+        rename(ARQ_TEMP, ARQ_EMP);
+
+        for (int i = 0; i < 3; i++)
+            if (livrosDevolvidos[i] > 0)
+                alterar_estoque(livrosDevolvidos[i], +1);
+
+        printf("Devolucao registrada com sucesso!\n");
+    } else {
+        remove(ARQ_TEMP);
+        if (!encontrado) printf("Emprestimo %d nao encontrado.\n", cod);
+    }
+}
+/* Soma 'delta' ao estoque do livro (use -1 ao emprestar, +1 ao devolver). Retorna 1 se deu certo */
+
+int alterar_estoque(int codLivro, int delta) {
+    FILE *arq = fopen(ARQ_LIVRO, "r");
+    FILE *temp = fopen(ARQ_TEMP, "w");
+    if (arq == NULL || temp == NULL) {
+        if (arq) fclose(arq);
+        if (temp) fclose(temp);
+        return 0;
+    }
+
+    char linha[TAM_BUFFER];
+    Livro a;
+    int alterado = 0;
+
+    fgets(linha, sizeof(linha), arq);   /* cabeçalho */
+    fputs(linha, temp);
+
+    while (fgets(linha, sizeof(linha), arq) != NULL) {
+        linha[strcspn(linha, "\r\n")] = '\0';
+        a.codAutores[0] = a.codAutores[1] = a.codAutores[2] = 0;
+        if (sscanf(linha, "%d;%79[^;];%d;%d;%d;%d", &a.cod, a.titulo, &a.estoque,
+                   &a.codAutores[0], &a.codAutores[1], &a.codAutores[2]) < 3)
+            continue;
+
+        if (a.cod == codLivro && a.estoque + delta >= 0) {
+            a.estoque += delta;
+            alterado = 1;
+        }
+        fprintf(temp, "%d;%s;%d;%d;%d;%d\n", a.cod, a.titulo, a.estoque,
+                a.codAutores[0], a.codAutores[1], a.codAutores[2]);
+    }
+    fclose(arq);
+    fclose(temp);
+
+    if (alterado) excluirArquivo(3);
+    else remove(ARQ_TEMP);
+    return alterado;
+}
+
+
 
 //Crud do Objeto Usuário
 void cadastrar(int tipo) {
-    char linha[TAM_BUFFER];
+   
     FILE *arq = NULL;
 
     switch (tipo){ //Tipo 01: Usuario | 02:Autor | 03:Livro 
@@ -246,62 +447,102 @@ void cadastrar(int tipo) {
             printf("Livro cadastrado com sucesso!\n");
             break;
         }
-        
-        default:
-            break;
-    }
-    
-    
-}
-void escolherAutor(int codAutores[]){
-    char linha[TAM_BUFFER];
+        case 4:{
+            Emprestimo a;
+            char linha[TAM_BUFFER], nome[MAX_NOME], titulo[MAX_NOME];
+            int codUser, statusUser, estoque, qtd = 0;
 
-    for ( int i = 0; i < 3; i++)
-            {   
-                listar(2); //Além de Printar a lista de Autores, ele retorna a quantidade de autores, temos registrados
-                int  autorEscolhido, autorExiste = 0;
-                char operator;
-                //Função pra criar um array com todos os códigos dos autores
+            a.codLivro[0] = a.codLivro[1] = a.codLivro[2] = 0;
+            a.status = 0;
 
-                FILE *arqAutor = fopen(ARQ_AUTOR,"r");
-                 if (arqAutor == NULL) {
-                    printf("Erro ao abrir o arquivo %s.\n", ARQ_AUTOR);
-                    return;
-                }
+            /* 1) Aluno */
+            listar(1);
+            printf("Cod do Usuario: ");
+            scanf("%d", &a.codAluno);
+            limpar_buffer();
 
-                printf("Escreva o Cod do Autor: \nSe nao foi registrado, digite 0\n");
-                scanf("%d", &autorEscolhido);
+            if (!buscar_registro(ARQ_USUARIO, a.codAluno, linha, sizeof(linha)) ||
+                sscanf(linha, "%d;%79[^;];%d", &codUser, nome, &statusUser) != 3) {
+                printf("Usuario nao encontrado.\n");
+                return;
+            }
+            if (statusUser != 0) {
+                printf("Usuario nao esta ATIVO, emprestimo negado.\n");
+                return;
+            }
+
+            /* 2) Livros (até 3) */
+            for (int i = 0; i < 3; i++) {
+                int codEscolhido, repetido = 0;
+
+                listar(3);
+                printf("Cod do Livro: ");
+                scanf("%d", &codEscolhido);
                 limpar_buffer();
-                char *token;
-                fgets(linha, sizeof(linha), arqAutor);//Pula o Cabeçalho
-                while (fgets(linha, sizeof(linha), arqAutor) != NULL) {
-                    token = strtok(linha, ";");//Pego o primeiro valor do arquivo Autor(Código), e coloco dentro do meu array
-                    if (token != NULL && autorEscolhido == atoi(token)){
-                        autorExiste = 1;
-                        codAutores[i] = autorEscolhido;
 
-                    };
+                for (int j = 0; j < i; j++)
+                    if (a.codLivro[j] == codEscolhido) repetido = 1;
+
+                if (repetido) {
+                    printf("Esse livro ja esta neste emprestimo.\n");
+                    i--;                                  /* repete a mesma vaga */
+                    continue;
                 }
-                fclose(arqAutor);
-                if (autorExiste){
-                    printf("Autor Adicionado com sucesso!");
+
+                if (!buscar_registro(ARQ_LIVRO, codEscolhido, linha, sizeof(linha)) ||
+                    sscanf(linha, "%d;%79[^;];%d", &codEscolhido, titulo, &estoque) != 3) {
+                    printf("Livro nao encontrado.\n");
+                    i--;
+                    continue;
                 }
-                else{
-                    printf("Cadastre o Novo Autor\n");
-                    cadastrar(2);
-                    autorEscolhido = prox_codigo(2) - 1; //Por meio desse método, adciono o código do último autor registrado
+                if (estoque <= 0) {
+                    printf("Livro '%s' sem estoque.\n", titulo);
+                    i--;
+                    continue;
                 }
+                if (!alterar_estoque(codEscolhido, -1)) {
+                    printf("Erro ao atualizar o estoque.\n");
+                    break;
+                }
+
+                a.codLivro[qtd++] = codEscolhido;
+                printf("Livro '%s' adicionado!\n", titulo);
 
                 if (i < 2) {
-                    printf("Pretende listar mais algum autor?(S/N)\n");
+                    char operator;
+                    printf("Pretende emprestar mais algum livro?(S/N)\n");
                     scanf(" %c", &operator);
                     limpar_buffer();
                     if (operator == 'N' || operator == 'n') break;
                     limpar_tela();
                 }
             }
-}
 
+            if (qtd == 0) {
+                printf("Nenhum livro selecionado, emprestimo cancelado.\n");
+                return;
+            }
+
+            /* 3) Grava */
+            arq = fopen(ARQ_EMP, "a");
+            if (arq == NULL) {
+                printf("Erro ao abrir o arquivo %s.\n", ARQ_EMP);
+                for (int i = 0; i < qtd; i++) alterar_estoque(a.codLivro[i], +1);  /* desfaz */
+                return;
+            }
+            a.cod = prox_codigo(4);
+            fprintf(arq, "%d;%d;%d;%d;%d;%d\n", a.cod, a.codAluno,
+                    a.codLivro[0], a.codLivro[1], a.codLivro[2], a.status);
+            fclose(arq);
+            printf("Emprestimo %d cadastrado com sucesso!\n", a.cod);
+            break;
+        }
+        default:
+            break;
+    }
+    
+    
+}
 int listar(int tipo) {
     
     char linha[TAM_BUFFER];
@@ -382,8 +623,58 @@ int listar(int tipo) {
 
                 /*loop, para transformar códigos em nomes de autores*/
 
-                conversorCodAutor(&nomesAutores,a.codAutores);
+                conversorCodAutor(nomesAutores,a.codAutores);
                 printf("%s\n", nomesAutores);
+                total++;
+            }
+            break;
+        }
+        case 4: {
+            arq = fopen(ARQ_EMP, "r");
+            Emprestimo a;
+            char nomeAluno[MAX_NOME], titulos[TAM_BUFFER], tituloLivro[MAX_NOME];
+            char linhaBusca[TAM_BUFFER];
+
+            if (arq == NULL) {
+                printf("Erro ao abrir o arquivo %s.\n", ARQ_EMP);
+                return 0;
+            }
+
+            fgets(linha, sizeof(linha), arq);  /* pula o cabecalho */
+            printf("\n%-6s | %-20s | %-35s | %s\n", "CODIGO", "ALUNO", "LIVRO(S)", "STATUS");
+            printf("----------------------------------------------------------------------------\n");
+
+            while (fgets(linha, sizeof(linha), arq) != NULL) {
+                linha[strcspn(linha, "\r\n")] = '\0';
+
+                a.codLivro[0] = a.codLivro[1] = a.codLivro[2] = 0;
+                if (sscanf(linha, "%d;%d;%d;%d;%d;%d", &a.cod, &a.codAluno,
+                        &a.codLivro[0], &a.codLivro[1], &a.codLivro[2], &a.status) != 6)
+                    continue;
+
+                /* código do aluno -> nome */
+                strcpy(nomeAluno, "(nao encontrado)");
+                if (buscar_registro(ARQ_USUARIO, a.codAluno, linhaBusca, sizeof(linhaBusca))) {
+                    int c;
+                    sscanf(linhaBusca, "%d;%79[^;]", &c, nomeAluno);
+                }
+
+                /* códigos dos livros -> títulos */
+                titulos[0] = '\0';
+                for (int i = 0; i < 3; i++) {
+                    if (a.codLivro[i] <= 0) continue;
+
+                    strcpy(tituloLivro, "(nao encontrado)");
+                    if (buscar_registro(ARQ_LIVRO, a.codLivro[i], linhaBusca, sizeof(linhaBusca))) {
+                        int c;
+                        sscanf(linhaBusca, "%d;%79[^;]", &c, tituloLivro);
+                    }
+                    strncat(titulos, tituloLivro, sizeof(titulos) - strlen(titulos) - 1);
+                    strncat(titulos, "; ",        sizeof(titulos) - strlen(titulos) - 1);
+                }
+
+                printf("%-6d | %-20s | %-35s | %s\n", a.cod, nomeAluno, titulos,
+                    a.status == 0 ? "EM ABERTO" : "DEVOLVIDO");
                 total++;
             }
             break;
@@ -428,7 +719,7 @@ void atualizar(int tipo) {
                 limpar_tela();
                 printf("Pretende atualizar oq?\n");
                 printf("+----------------------+\n");
-                printf(">>Cod:%d(Imutável)\n", a.cod);
+                printf(">>Cod:%d(Imutavel)\n", a.cod);
                 printf("1- Nome: %s\n", a.nome);
                 printf("2- Status: %s\n", conversorStatus);
                 printf("3- Nada(Sair)\n");
@@ -491,7 +782,7 @@ void atualizar(int tipo) {
                 limpar_tela();
                 printf("Pretende atualizar oq?\n");
                 printf("+----------------------+\n");
-                printf(">>Cod:%d(Imutável)\n", a.cod);
+                printf(">>Cod:%d(Imutavel)\n", a.cod);
                 printf("1- Nome: %s\n", a.nome);
                 printf("2- Nada(Sair)\n");
                 printf("+----------------------+\n");
@@ -545,7 +836,7 @@ void atualizar(int tipo) {
                 conversorCodAutor(nomes,a.codAutores);
                 printf("Pretende atualizar oq?\n");
                 printf("+----------------------+\n");
-                printf(">>Cod:%d(Imutável)\n", a.cod);
+                printf(">>Cod:%d(Imutavel)\n", a.cod);
                 printf("1- Titulo %s\n", a.titulo);
                 printf("2- Estoque %d\n", a.estoque);
                 printf("3- Autores: %s\n", nomes);
@@ -665,13 +956,175 @@ void excluir(int tipo) {
 }
 
 int main(void){
-    limpar_tela();
     garantir_arquivo();
-    for (int i = 0; i < 3; i++){
-        atualizar(3);
-    }
-    
-    
-    
-    
+    limpar_tela();
+    limpar_buffer();
+    char opcao;
+    int op = 0;
+    do{
+      limpar_buffer();
+      printf("==================================\n");
+      printf(" > >   Bem Vindo Ao SISBIB    < < \n");
+      printf("==================================\n");
+      printf("| 1 - Alunos:                    |\n");
+      printf("| 2 - Autores:                   |\n");
+      printf("| 3 - Livros:                    |\n");
+      printf("| 4 - Emprestimos:               |\n");
+      printf("| 5 - Sair                       |\n");
+      printf("==================================\n");
+      scanf("%c", &opcao);
+      limpar_buffer();
+
+      switch (opcao){
+          case '1':
+            do{
+            limpar_tela();
+            printf("==================================\n");
+            printf("   > >   GESTAO DE ALUNOS   < <   \n");
+            printf("==================================\n");
+            printf("| 1 - Cadastrar Aluno:           |\n");
+            printf("| 2 - Listar Alunos:             |\n");
+            printf("| 3 - Atualizar Aluno:           |\n");
+            printf("| 4 - Excluir ALuno              |\n");
+            printf("| 5 - Sair                       |\n");
+            printf("==================================\n");
+            scanf("%d", &op);
+            limpar_buffer();
+            limpar_tela();
+            switch (op){
+                case 1:
+                    cadastrar(1);
+                    break;
+                case 2:
+                    listar(1);
+                    break;
+                case 3:
+                    atualizar(1);
+                    break;
+                case 4:
+                    excluir(1);
+                    break;
+                case 5:
+                    break;;
+                default:
+                    printf("Valor Invalido, Tente Novamente, ");
+                    break;
+            }
+            system("pause");
+                } while (op < 1 || op > 5);
+            break;
+        case '2':
+            do{
+            limpar_tela();
+            printf("==================================\n");
+            printf("   > >   GESTAO DE AUTORES   < <   \n");
+            printf("==================================\n");
+            printf("| 1 - Cadastrar Autor:           |\n");
+            printf("| 2 - Listar Autores:            |\n");
+            printf("| 3 - Atualizar Autor:           |\n");
+            printf("| 4 - Excluir Autor              |\n");
+            printf("| 5 - Sair                       |\n");
+            printf("==================================\n");
+            scanf("%d", &op);
+            limpar_buffer();
+            limpar_tela();
+            switch (op){
+                case 1:
+                    cadastrar(2);
+                    break;
+                case 2:
+                    listar(2);
+                    break;
+                case 3:
+                    atualizar(2);
+                    break;
+                case 4:
+                    excluir(2);
+                    break;
+                case 5:
+                    break;;
+                default:
+                    printf("Valor Invalido, Tente Novamente, ");
+                    break;
+            }
+            system("pause");
+                } while (op < 1 || op > 5);
+            break;
+        case '3':
+            do{
+            limpar_tela();
+            printf("==================================\n");
+            printf("   > >   GESTAO DE LIVROS   < <   \n");
+            printf("==================================\n");
+            printf("| 1 - Cadastrar Livro:           |\n");
+            printf("| 2 - Listar Livros:             |\n");
+            printf("| 3 - Atualizar Livro:           |\n");
+            printf("| 4 - Excluir Livro              |\n");
+            printf("| 5 - Sair                       |\n");
+            printf("==================================\n");
+            scanf("%d", &op);
+            limpar_buffer();
+            limpar_tela();
+            switch (op){
+                case 1:
+                    cadastrar(3);
+                    break;
+                case 2:
+                    listar(3);
+                    break;
+                case 3:
+                    atualizar(3);
+                    break;
+                case 4:
+                    excluir(3);
+                    break;
+                case 5:
+                    break;;
+                default:
+                    printf("Valor Invalido, Tente Novamente, ");
+                    break;
+            }
+            system("pause");
+                } while (op < 1 || op > 5);
+            break;
+            
+        case '4':
+            do{
+            limpar_tela();
+            printf("==================================\n");
+            printf("  > >   GESTAO DE EMPRESTIMOS  < < \n");
+            printf("==================================\n");
+            printf("| 1 - Novo Emprestimo:           |\n");
+            printf("| 2 - Listar Emprestimos:        |\n");
+            printf("| 3 - Devolver Livro:            |\n");
+            printf("| 4 - Sair                       |\n");
+            printf("==================================\n");
+            scanf("%d", &op);
+            limpar_buffer();
+            limpar_tela();
+            switch (op){
+                case 1:
+                    cadastrar(4);
+                    break;
+                case 2:
+                    listar(4);
+                    break;
+                case 3:
+                    devolver();
+                    break;
+                case 4:
+                    break;
+                default:
+                    printf("Valor Invalido, Tente Novamente, ");
+                    break;
+            }
+            system("pause");
+                } while (op < 1 || op > 4);
+            break;
+            
+      
+      default:
+        break;
+      } 
+    } while (opcao != 's' || opcao != 'S'  );
 }
