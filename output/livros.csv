@@ -1,22 +1,22 @@
 cod;título;Estoque;codAutores
-1001;Dom Casmurro;10;1001
-1002;A Hora da Estrela;5;1002
-1003;Capitães da Areia;8;1003
-1004;Sítio do Picapau Amarelo;12;1004
-1005;Claro Enigma;6;1005
-1006;Ou Isto ou Aquilo;15;1006
-1007;Grande Sertão: Veredas;4;1007
-1008;Vidas Secas;9;1008
-1009;Senhora;7;1009
-1010;Triste Fim de Policarpo Quaresma;11;1010
-1011;O Quinze;14;1011
-1012;O Tempo e o Vento;3;1012
-1013;As Meninas;8;1013
-1014;Macunaíma;10;1014
-1015;Olhos d'Água;6;1015
-1016;Quarto de Despejo;13;1016
-1017;O Alquimista;20;1017
-1018;Agosto;5;1018
-1019;Comédias da Vida Privada;9;1019
+1001;Dom Casmurro;10;1001;0;0
+1002;A Hora da Estrela;5;1002;0;0
+1003;Capitães da Areia;8;1003;0;0
+1004;Sítio do Picapau Amarelo;12;1004;0;0
+1005;Claro Enigma;6;1005;0;0
+1006;Ou Isto ou Aquilo;15;1006;0;0
+1007;Grande Sertão: Veredas;4;1007;0;0
+1008;Vidas Secas;9;1008;0;0
+1009;Senhora;7;1009;0;0
+1010;Triste Fim de Policarpo Quaresma;11;1010;0;0
+1011;O Quinze;14;1011;0;0
+1012;O Tempo e o Vento;3;1012;0;0
+1013;As Meninas;8;1013;0;0
+1014;Macunaíma;10;1014;0;0
+1015;Olhos d'Água;6;1015;0;0
+1016;Quarto de Despejo;13;1016;0;0
+1017;O Alquimista;20;1017;0;0
+1018;Agosto;5;1018;0;0
+1019;Comédias da Vida Privada;9;1019;0;0
 1020;Torto Arado;15;1020;1021;1008
-1021;Diario de um Banana;30;1022
+1021;Diario de um Banana;15;1021;1019;1018

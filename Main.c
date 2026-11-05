@@ -240,58 +240,7 @@ void cadastrar(int tipo) {
             //Aqui começa o registro
             
             a.codAutores[0] = a.codAutores[1] = a.codAutores[2] = 0;
-            for ( int i = 0; i < 3; i++)
-            {   
-                listar(2); //Além de Printar a lista de Autores, ele retorna a quantidade de autores, temos registrados
-                int autores[1000], op = 0, autorEscolhido, autorExiste = 0;
-                char operator;
-                //Função pra criar um array com todos os códigos dos autores
-
-                FILE *arqAutor = fopen(ARQ_AUTOR,"r");
-                 if (arq == NULL) {
-                printf("Erro ao abrir o arquivo %s.\n", ARQ_AUTOR);
-                return;
-                }
-
-                
-
-                char *token;
-                fgets(linha, sizeof(linha), arqAutor);//Pula o Cabeçalho
-                while (op < 1000 && fgets(linha, sizeof(linha), arqAutor) != NULL) {
-                    token = strtok(linha, ";");//Pego o primeiro valor do arquivo Autor(Código), e coloco dentro do meu array
-                    if (token != NULL) autores[op++] = atoi(token);
-                }
-                fclose(arqAutor);
-
-                
-                printf("Escreva o Cod do Autor: \nSe nao foi registrado, digite 0\n");
-                scanf("%d", &autorEscolhido);
-                limpar_buffer();
-                    for (int j = 0; j < op; j++){
-                        if (autorEscolhido == autores[j]) autorExiste = 1;
-                    }
-                if (autorExiste){
-                    printf("Autor Adicionado com sucesso!");
-                }
-                else{
-                    printf("Cadastre o Novo Autor\n");
-                    cadastrar(2);
-                    autorEscolhido = prox_codigo(2) - 1; //Por meio desse método, adciono o código do último autor registrado
-                }
-
-                a.codAutores[i] = autorEscolhido;//No final, recebo o valor de autorEscolhido como item da minha lista de autores
-
-                
-                if (i < 2) {
-                    printf("Pretende listar mais algum autor?(S/N)\n");
-                    scanf(" %c", &operator);
-                    limpar_buffer();
-                    if (operator == 'N' || operator == 'n') break;
-                    limpar_tela();
-                }
-            }
-            
-            
+            escolherAutor(a.codAutores);
             fprintf(arq, "\n%d;%s;%d;%d;%d;%d\n", a.cod, a.titulo,a.estoque,a.codAutores[0],a.codAutores[1],a.codAutores[2]);
             fclose(arq);
             printf("Livro cadastrado com sucesso!\n");
@@ -303,6 +252,54 @@ void cadastrar(int tipo) {
     }
     
     
+}
+void escolherAutor(int codAutores[]){
+    char linha[TAM_BUFFER];
+
+    for ( int i = 0; i < 3; i++)
+            {   
+                listar(2); //Além de Printar a lista de Autores, ele retorna a quantidade de autores, temos registrados
+                int  autorEscolhido, autorExiste = 0;
+                char operator;
+                //Função pra criar um array com todos os códigos dos autores
+
+                FILE *arqAutor = fopen(ARQ_AUTOR,"r");
+                 if (arqAutor == NULL) {
+                    printf("Erro ao abrir o arquivo %s.\n", ARQ_AUTOR);
+                    return;
+                }
+
+                printf("Escreva o Cod do Autor: \nSe nao foi registrado, digite 0\n");
+                scanf("%d", &autorEscolhido);
+                limpar_buffer();
+                char *token;
+                fgets(linha, sizeof(linha), arqAutor);//Pula o Cabeçalho
+                while (fgets(linha, sizeof(linha), arqAutor) != NULL) {
+                    token = strtok(linha, ";");//Pego o primeiro valor do arquivo Autor(Código), e coloco dentro do meu array
+                    if (token != NULL && autorEscolhido == atoi(token)){
+                        autorExiste = 1;
+                        codAutores[i] = autorEscolhido;
+
+                    };
+                }
+                fclose(arqAutor);
+                if (autorExiste){
+                    printf("Autor Adicionado com sucesso!");
+                }
+                else{
+                    printf("Cadastre o Novo Autor\n");
+                    cadastrar(2);
+                    autorEscolhido = prox_codigo(2) - 1; //Por meio desse método, adciono o código do último autor registrado
+                }
+
+                if (i < 2) {
+                    printf("Pretende listar mais algum autor?(S/N)\n");
+                    scanf(" %c", &operator);
+                    limpar_buffer();
+                    if (operator == 'N' || operator == 'n') break;
+                    limpar_tela();
+                }
+            }
 }
 
 int listar(int tipo) {
@@ -399,7 +396,7 @@ int listar(int tipo) {
 }
 
 void atualizar(int tipo) {
-    Usuario a;
+    
     char linha[TAM_BUFFER];
     int mat,escolha;
 
@@ -407,7 +404,8 @@ void atualizar(int tipo) {
     FILE *temp = fopen(ARQ_TEMP, "w");
     int atualizado = 0;
     switch (tipo){
-    case 1:
+    case 1:{
+        Usuario a;
         arq  = fopen(ARQ_USUARIO, "r");
         if (arq == NULL || temp == NULL) {
             printf("Erro ao abrir os arquivos.\n");
@@ -462,14 +460,140 @@ void atualizar(int tipo) {
                 printf("Usuario Atualizado com sucesso\n");
                 atualizado = 1;
             }
-            else {
+            else{
                 fprintf(temp,"%d;%s;%d\n", a.cod, a.nome, a.status);
-            }
-            int tipo = 1;
-            break;
-                
+            }     
         }
-    
+        
+            break;
+        }
+    case 2:{
+        Autor a;
+        arq  = fopen(ARQ_AUTOR, "r");
+        if (arq == NULL || temp == NULL) {
+            printf("Erro ao abrir os arquivos.\n");
+            if (arq) fclose(arq);
+            if (temp) fclose(temp);
+            return;
+        }
+        listar(2);
+        printf("Cod Autor para atualizar: ");
+        scanf(" %d", &mat);
+        limpar_buffer();
+
+        fgets(linha, sizeof(linha), arq);
+        fputs(linha, temp);
+
+        while (fgets(linha, sizeof(linha), arq) != NULL) {
+            linha[strcspn(linha, "\r\n")] = '\0';
+            if (sscanf(linha, "%d;%79[^;]", &a.cod, a.nome) != 2) continue;   /* ignora linhas em branco */
+            if (a.cod == mat){   
+                limpar_tela();
+                printf("Pretende atualizar oq?\n");
+                printf("+----------------------+\n");
+                printf(">>Cod:%d(Imutável)\n", a.cod);
+                printf("1- Nome: %s\n", a.nome);
+                printf("2- Nada(Sair)\n");
+                printf("+----------------------+\n");
+                scanf("%d",&escolha);
+                limpar_buffer();
+                
+                if (escolha == 1){
+                    printf("Novo nome: ");
+                    fgets(a.nome, MAX_NOME, stdin);
+                    a.nome[strcspn(a.nome, "\n")] = '\0';
+                }
+                else{
+                    printf("Tchau, Tchau!\n");
+                }
+                fprintf(temp,"%d;%s\n", a.cod, a.nome);
+                printf("Autor Atualizado com sucesso Atualizado com sucesso\n");
+                atualizado = 1;
+            }
+            else{
+                fprintf(temp,"%d;%s\n", a.cod, a.nome);
+            }     
+        }
+        
+            break;
+        }
+    case 3:{
+        Livro a;
+        arq  = fopen(ARQ_LIVRO, "r");
+        if (arq == NULL || temp == NULL) {
+            printf("Erro ao abrir os arquivos.\n");
+            if (arq) fclose(arq);
+            if (temp) fclose(temp);
+            return;
+        }
+        listar(3);
+        printf("Cod Livro para atualizar: ");
+        scanf("%d", &mat);
+        limpar_buffer();
+
+        fgets(linha, sizeof(linha), arq);
+        fputs(linha, temp);
+
+        while (fgets(linha, sizeof(linha), arq) != NULL) {
+            linha[strcspn(linha, "\r\n")] = '\0';
+            a.codAutores[0] = a.codAutores[1] = a.codAutores[2] = 0;
+            if (sscanf(linha,"%d;%79[^;];%d;%d;%d;%d",&a.cod, a.titulo, &a.estoque,&a.codAutores[0], &a.codAutores[1], &a.codAutores[2]) < 3) continue;
+
+            if (a.cod == mat){   
+                limpar_tela();
+                char nomes[TAM_BUFFER];
+                conversorCodAutor(nomes,a.codAutores);
+                printf("Pretende atualizar oq?\n");
+                printf("+----------------------+\n");
+                printf(">>Cod:%d(Imutável)\n", a.cod);
+                printf("1- Titulo %s\n", a.titulo);
+                printf("2- Estoque %d\n", a.estoque);
+                printf("3- Autores: %s\n", nomes);
+                printf("4- Nada(Sair)\n");
+                printf("+----------------------+\n");
+                scanf("%d",&escolha);
+                limpar_buffer();
+                
+                switch (escolha){
+                    case 1:
+                        printf("Novo Titulo: ");
+                        fgets(a.titulo, MAX_NOME, stdin);
+                        a.titulo[strcspn(a.titulo, "\n")] = '\0';
+                        break;
+                    case 2:
+                        printf("Novo Estoque: ");
+                        scanf("%d",&a.estoque);
+                        limpar_buffer();
+                        break;
+                    case 3:
+                        a.codAutores[0] = a.codAutores[1] = a.codAutores[2] = 0;
+                        escolherAutor(a.codAutores);
+                        break;   
+                    default:
+                        printf("Tchau, Tchau!\n");
+                        fclose(arq);
+                        fclose(temp);
+                        remove(ARQ_TEMP);
+                        return;
+                        
+                        break;
+                    }
+
+                fprintf(temp, "%d;%s;%d;%d;%d;%d\n", a.cod, a.titulo, a.estoque, a.codAutores[0], a.codAutores[1], a.codAutores[2]);
+                printf("Livro Atualizado com sucesso\n");
+                atualizado = 1;
+            }
+            else{
+                fprintf(temp, "%d;%s;%d;%d;%d;%d\n", a.cod, a.titulo, a.estoque,a.codAutores[0], a.codAutores[1], a.codAutores[2]);
+            }     
+        }
+        break;
+        }
+        
+        default:
+            break;
+        }
+
         fclose(arq);
         fclose(temp);
 
@@ -479,11 +603,6 @@ void atualizar(int tipo) {
             remove(ARQ_TEMP);
             printf("Cod:%d nao encontrado.\n", mat);
             garantir_arquivo();
-        }
-            break;
-        
-        default:
-            break;
         }
     
     
@@ -548,7 +667,10 @@ void excluir(int tipo) {
 int main(void){
     limpar_tela();
     garantir_arquivo();
-    listar(3);
+    for (int i = 0; i < 3; i++){
+        atualizar(3);
+    }
+    
     
     
     
