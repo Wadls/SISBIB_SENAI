@@ -33,7 +33,7 @@ int prox_codigo(int tipo);
 void excluirArquivo(int tipo);
 int listar(int tipo);
 void cadastrar(int tipo);
-
+void conversorCodAutor(char nomes[], int codAutores[]);
 
 //Funções que Otimizam o Código
 void limpar_tela(void) {
@@ -136,6 +136,39 @@ void excluirArquivo(int tipo){
     garantir_arquivo();
     
 };
+void conversorCodAutor(char nomes[], int codAutores[]){
+    FILE *arqAutor = fopen(ARQ_AUTOR, "r");
+    char linhaAutor[TAM_BUFFER];
+    nomes[0] = '\0';
+    if (arqAutor == NULL) {
+                printf("Erro ao abrir o arquivo, Autor\n");
+                return;
+            }
+    for (int i = 0; i < 3; i++) {
+                    if (codAutores[i] <= 0)
+                        continue;
+
+
+                    rewind(arqAutor);/* volta ao início */
+                    fgets(linhaAutor, sizeof(linhaAutor), arqAutor); /* pula cabecalho */
+
+                    while (fgets(linhaAutor, sizeof(linhaAutor), arqAutor) != NULL) {
+                        
+                        linhaAutor[strcspn(linhaAutor, "\r\n")] = '\0';
+                        char *token = strtok(linhaAutor, ";");
+                        if (token != NULL && atoi(token) == codAutores[i]) { // Se o código escritor for igual o código dentro do arq autor
+                            token = strtok(NULL, ";");
+                            if (token != NULL){
+                                strncat(nomes,token,strlen(nomes) -1);
+                                strncat(nomes,"; ",strlen(nomes) -1);
+                            }
+                            break;
+                        }
+                    }
+
+    }
+    fclose(arqAutor);
+}
 
 //Crud do Objeto Usuário
 void cadastrar(int tipo) {
@@ -322,15 +355,12 @@ int listar(int tipo) {
             break;
         }
         case 3:{
-            FILE *arqAutor = fopen(ARQ_AUTOR, "r"); 
             arq = fopen(ARQ_LIVRO, "r"); 
             Livro a;
-            char linhaAutor[TAM_BUFFER]; // Buffer separado para autores
+            char nomesAutores[TAM_BUFFER];
             
-            if (arq == NULL || arqAutor == NULL) {
-                printf("Erro ao abrir o arquivo, Autor e Livro\n");
-                if (arq) fclose(arq);
-                if (arqAutor) fclose(arqAutor);
+            if (arq == NULL) {
+                printf("Erro ao abrir o arquivo Livro\n");
                 return 0;
             }
 
@@ -354,29 +384,11 @@ int listar(int tipo) {
                 printf("%-6d | %-30s | %-7d |", a.cod, a.titulo, a.estoque);
 
                 /*loop, para transformar códigos em nomes de autores*/
-                for (int i = 0; i < 3; i++) {
-                    if (a.codAutores[i] <= 0)
-                        continue;
 
-                    rewind(arqAutor);                              /* volta ao início */
-                    fgets(linhaAutor, sizeof(linhaAutor), arqAutor); /* pula cabecalho */
-
-                    while (fgets(linhaAutor, sizeof(linhaAutor), arqAutor) != NULL) {
-                        linhaAutor[strcspn(linhaAutor, "\r\n")] = '\0';
-
-                        char *token = strtok(linhaAutor, ";");
-                        if (token != NULL && atoi(token) == a.codAutores[i]) {
-                            token = strtok(NULL, ";");
-                            if (token != NULL)
-                                printf(" %s;", token);
-                            break;
-                        }
-                    }
-                }
-                printf("\n");
+                conversorCodAutor(&nomesAutores,a.codAutores);
+                printf("%s\n", nomesAutores);
                 total++;
             }
-            fclose(arqAutor);
             break;
         }
         default:
@@ -385,6 +397,7 @@ int listar(int tipo) {
     if (arq) fclose(arq);
     return total;
 }
+
 void atualizar(int tipo) {
     Usuario a;
     char linha[TAM_BUFFER];
@@ -535,6 +548,8 @@ void excluir(int tipo) {
 int main(void){
     limpar_tela();
     garantir_arquivo();
-    cadastrar(3);
+    listar(3);
+    
+    
     
 }
