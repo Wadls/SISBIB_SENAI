@@ -1,14 +1,14 @@
 cod;título;Estoque;codAutores
-1001;Dom Casmurro;10;1001;0;0
-1002;A Hora da Estrela;5;1002;0;0
-1003;Capitães da Areia;8;1003;0;0
+1001;Dom Casmurro;11;1001;0;0
+1002;A Hora da Estrela;6;1002;0;0
+1003;Capitães da Areia;9;1003;0;0
 1004;Sítio do Picapau Amarelo;12;1004;0;0
 1005;Claro Enigma;6;1005;0;0
 1006;Ou Isto ou Aquilo;15;1006;0;0
 1007;Grande Sertão: Veredas;4;1007;0;0
-1008;Vidas Secas;9;1008;0;0
-1009;Senhora;7;1009;0;0
-1010;Triste Fim de Policarpo Quaresma;11;1010;0;0
+1008;Vidas Secas;10;1008;0;0
+1009;Senhora;8;1009;0;0
+1010;Triste Fim de Policarpo Quaresma;12;1010;0;0
 1011;O Quinze;14;1011;0;0
 1012;O Tempo e o Vento;3;1012;0;0
 1013;As Meninas;8;1013;0;0
@@ -20,4 +20,4 @@ cod;título;Estoque;codAutores
 1019;Comédias da Vida Privada;9;1019;0;0
 1020;Torto Arado;15;1020;1021;1008
 1021;Diario de um Banana;15;1021;1019;1018
-1022;Turma da Monica;12;1025;1025;0
+1022;Turma da Monica;12;1025;0;0

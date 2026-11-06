@@ -11,7 +11,6 @@
 #define COD_INICIAL  1000
 #define TAM_BUFFER 512
 
-
 typedef struct {
     int cod;
     char nome[MAX_NOME];
@@ -23,8 +22,8 @@ typedef struct {
 }Autor;
 typedef struct {
     int cod;
-    char titulo[MAX_NOME]; //Nome completo + Espaços
-    int codAutores[3]; //Nome completo + Espaços
+    char titulo[MAX_NOME];
+    int codAutores[3]; 
     int estoque;
 }Livro;
 typedef struct {
@@ -34,22 +33,27 @@ typedef struct {
     int status;
 }Emprestimo;
 
-
 void limpar_tela(void);
 void limpar_buffer(void);
 int prox_codigo(int tipo);
 void excluirArquivo(int tipo);
-int listar(int tipo);
-void cadastrar(int tipo);
 void conversorCodAutor(char nomes[], int codAutores[]);
 void escolherAutor(int codAutores[]);
 int buscar_registro(const char *arquivo, int cod, char *linhaOut, size_t tam);
 int alterar_estoque(int codLivro, int delta);
+void garantir_arquivo(void);
+
+//CRUD de Objetos
+void cadastrar(int tipo);
+int listar(int tipo);
 void devolver(void);
 void atualizar(int tipo);
 void excluir(int tipo);
-void garantir_arquivo(void);
-
+/*Essas variáveis servem, para que tanto a função de garantir arquivo quanto os cabeçalhos estejam otimizados*/
+const char *ARQUIVOS[]   = {NULL, ARQ_USUARIO, ARQ_AUTOR, ARQ_LIVRO, ARQ_EMP};
+const char *CABECALHOS[] = {NULL, "cod;nome;status", "cod;nome",
+                                   "cod;titulo;estoque;a1;a2;a3",
+                                   "cod;codAluno;livro1;livro2;livro3;status"};
 //Funções que Otimizam o Código
 void limpar_tela(void) {
     printf("\033[2J\033[H");  /* limpa a tela e posiciona o cursor no topo */
@@ -60,74 +64,17 @@ void limpar_buffer(void) {
         ;  
 }
 void garantir_arquivo(void) {
-    FILE *arqUser = fopen(ARQ_USUARIO, "r");
-    FILE *arqAutor = fopen(ARQ_AUTOR, "r");
-    FILE *arqLivro = fopen(ARQ_LIVRO, "r");
-
-    if (arqUser == NULL) {
-        arqUser = fopen(ARQ_USUARIO, "w");
-        if (arqUser != NULL) {
-            fprintf(arqUser, "cod;nome;status\n");
-            fclose(arqUser);
-        }
-    } else {
-        fclose(arqUser);
-    }
-    if (arqAutor == NULL) {
-        arqAutor = fopen(ARQ_AUTOR, "w");
-        if (arqAutor != NULL) {
-            fprintf(arqAutor, "cod;nome\n");
-            fclose(arqAutor);
-        }
-    } else {
-        fclose(arqAutor);
-    }
-    if (arqLivro == NULL) {
-        arqLivro = fopen(ARQ_LIVRO, "w");
-        if (arqLivro != NULL) {
-            fprintf(arqLivro, "cod;título;Estoque;codAutores\n");
-            fclose(arqLivro);
-        }
-    } else {
-        fclose(arqLivro);
-    }
-    FILE *arqEmp = fopen(ARQ_EMP, "r");
-    if (arqEmp == NULL) {
-        arqEmp = fopen(ARQ_EMP, "w");
-        if (arqEmp != NULL) {
-            fprintf(arqEmp, "cod;codAluno;livro1;livro2;livro3;status\n");
-            fclose(arqEmp);
-        }
-    } else {
-        fclose(arqEmp);
+    for (int i = 1; i <= 4; i++) {
+        FILE *f = fopen(ARQUIVOS[i], "r");
+        if (f) { fclose(f); continue; }
+        if ((f = fopen(ARQUIVOS[i], "w"))) { fprintf(f, "%s\n", CABECALHOS[i]); fclose(f);}
     }
 }
 int prox_codigo(int tipo){//Esse Sistema Serve para Vasculhar o Arquivo e Atribuir o Valor de Forma Dinâmica
 
-    char linha[TAM_BUFFER];
-    FILE *arq = NULL; 
-      
-    switch (tipo){
-        case 1:
-        arq =  fopen(ARQ_USUARIO, "r");
-        break;
-        case 2:
-            arq =  fopen(ARQ_AUTOR, "r");
-            break;
-        case 3:
-            arq =  fopen(ARQ_LIVRO, "r");
-            break;
-        case 4:
-            arq =  fopen(ARQ_EMP, "r");
-            break;
-        default:
-            return 0;
-            break;
-    }
-
-    
-    
-    //Programa Geralzão
+    char linha[TAM_BUFFER]; 
+    if (tipo < 1 || tipo > 4) return 0;
+    FILE *arq = fopen(ARQUIVOS[tipo], "r"); // 1 = Aluno | 2 = Autor | 3 = Livro | 4 = Empréstimo 
     //Percorre todo o arquivo a procura do maior valor de Código Registrado
     int cod;
     int maior = COD_INICIAL; //1000
@@ -175,8 +122,6 @@ void conversorCodAutor(char nomes[], int codAutores[]){
     for (int i = 0; i < 3; i++) {
                     if (codAutores[i] <= 0)
                         continue;
-
-
                     rewind(arqAutor);/* volta ao início */
                     fgets(linhaAutor, sizeof(linhaAutor), arqAutor); /* pula cabecalho */
 
@@ -234,6 +179,7 @@ void escolherAutor(int codAutores[]){
                     printf("Cadastre o Novo Autor\n");
                     cadastrar(2);
                     autorEscolhido = prox_codigo(2) - 1; //Por meio desse método, adciono o código do último autor registrado
+                    codAutores[i] = autorEscolhido;
                 }
 
                 if (i < 2) {
@@ -245,9 +191,6 @@ void escolherAutor(int codAutores[]){
                 }
             }
 }
-/* Procura 'cod' na primeira coluna do arquivo. Se achar, copia a linha para linhaOut e retorna 1 */
-
-
 
 int buscar_registro(const char *arquivo, int cod, char *linhaOut, size_t tam) {
     FILE *f = fopen(arquivo, "r");
@@ -376,7 +319,7 @@ void cadastrar(int tipo) {
    
     FILE *arq = NULL;
 
-    switch (tipo){ //Tipo 01: Usuario | 02:Autor | 03:Livro 
+    switch (tipo){ //Tipo 01: Usuario | 02:Autor | 03:Livro | 04:Emprestimo
         case 1:{ 
             arq = fopen(ARQ_USUARIO, "a");   /* modo append */
             Usuario a;
@@ -386,8 +329,7 @@ void cadastrar(int tipo) {
             }
         
             a.cod = prox_codigo(1);
-            if (a.cod == 0)
-            {
+            if (a.cod == 0){
                 printf("Error, Tente de novo\n");
                 fclose(arq);
                 return;
@@ -396,7 +338,9 @@ void cadastrar(int tipo) {
             printf("Nome: ");
             fgets(a.nome, MAX_NOME, stdin);
             a.nome[strcspn(a.nome, "\n")] = '\0';
-            a.status = 0;
+
+            a.status = 0; // 0 = ATIVO | 1 = INATIVO | 2 = SUSPENSO
+
             fprintf(arq, "\n%d;%s;%d\n", a.cod, a.nome, a.status);
 
             fclose(arq);
@@ -410,7 +354,8 @@ void cadastrar(int tipo) {
                 printf("Erro ao abrir o arquivo %s.\n", ARQ_AUTOR);
                 return;
             }
-            a.cod = prox_codigo(2); //Tipo 01: Usuario | 02:Autor | 03:Livro 
+            a.cod = prox_codigo(2); //Tipo 01: Usuario | 02:Autor | 03:Livro | 04 Emprestimo
+
             printf("Nome: ");
             fgets(a.nome, MAX_NOME, stdin); //Atribuição do Nome, com limitador
             a.nome[strcspn(a.nome, "\n")] = '\0';
@@ -484,8 +429,8 @@ void cadastrar(int tipo) {
                     if (a.codLivro[j] == codEscolhido) repetido = 1;
 
                 if (repetido) {
-                    printf("Esse livro ja esta neste emprestimo.\n");
-                    i--;                                  /* repete a mesma vaga */
+                    printf("Esse livro ja esta neste emprestimo.\n"); //Não permito emprestar dois livros iguais
+                    i--;                                  
                     continue;
                 }
 
@@ -530,7 +475,7 @@ void cadastrar(int tipo) {
                 for (int i = 0; i < qtd; i++) alterar_estoque(a.codLivro[i], +1);  /* desfaz */
                 return;
             }
-            a.cod = prox_codigo(4);
+            a.cod = prox_codigo(4); // 1 Aluno | 2 = Autor | 3 = Livro | 4 = Empréstimo
             fprintf(arq, "%d;%d;%d;%d;%d;%d\n", a.cod, a.codAluno,
                     a.codLivro[0], a.codLivro[1], a.codLivro[2], a.status);
             fclose(arq);
@@ -572,7 +517,6 @@ int listar(int tipo) {
         case 2:{
             arq = fopen(ARQ_AUTOR, "r");   
             Autor a;
-            
             if (arq == NULL) {
                 printf("Erro ao abrir o arquivo %s.\n", ARQ_AUTOR);
                 return 0;
@@ -844,7 +788,6 @@ void atualizar(int tipo) {
                 printf("+----------------------+\n");
                 scanf("%d",&escolha);
                 limpar_buffer();
-                
                 switch (escolha){
                     case 1:
                         printf("Novo Titulo: ");
@@ -866,8 +809,7 @@ void atualizar(int tipo) {
                         fclose(temp);
                         remove(ARQ_TEMP);
                         return;
-                        
-                        break;
+
                     }
 
                 fprintf(temp, "%d;%s;%d;%d;%d;%d\n", a.cod, a.titulo, a.estoque, a.codAutores[0], a.codAutores[1], a.codAutores[2]);
@@ -900,59 +842,56 @@ void atualizar(int tipo) {
 }
 
 void excluir(int tipo) {
-    Usuario a;
-    char linha[TAM_BUFFER];
-    int mat,  excluido = 0;
-    FILE *arq = NULL; 
-    FILE *temp = fopen(ARQ_TEMP, "w");
+    char linha[TAM_BUFFER], lv[TAM_BUFFER];
+    int cod, c, aluno, l[3], st, a[3], pend = 0, achou = 0;
 
-    switch (tipo){
-    case 1:
-        arq  = fopen(ARQ_USUARIO, "r");
-        if (arq == NULL || temp == NULL) {
-            printf("Erro ao abrir os arquivos.\n");
-            if (arq) fclose(arq);
-            if (temp) fclose(temp);
-            return;
+    if (tipo < 1 || tipo > 3) return;
+    listar(tipo);
+    printf("Cod a excluir: ");
+    scanf("%d", &cod);
+    limpar_buffer();
+
+    /* bloqueia se houver emprestimo em aberto ligado ao aluno/livro/autor */
+    FILE *f = fopen(ARQ_EMP, "r");
+    if (f) {
+        fgets(linha, sizeof(linha), f);
+        while (!pend && fgets(linha, sizeof(linha), f)) {
+            if (sscanf(linha, "%d;%d;%d;%d;%d;%d", &c, &aluno, &l[0], &l[1], &l[2], &st) != 6 || st)
+                continue;
+            if (tipo == 1) pend = (aluno == cod);
+            for (int k = 0; k < 3; k++) {
+                if (tipo == 3) pend |= (l[k] == cod);
+                if (tipo == 2 && buscar_registro(ARQ_LIVRO, l[k], lv, sizeof(lv))) {
+                    a[0] = a[1] = a[2] = 0;
+                    sscanf(lv, "%*d;%*[^;];%*d;%d;%d;%d", &a[0], &a[1], &a[2]);
+                    pend |= (a[0] == cod || a[1] == cod || a[2] == cod);
+                }
             }
-        listar(1);
-        printf("Cod Usuario a Deletar: ");
-        scanf("%d", &mat);
-        limpar_buffer();
-
-        fgets(linha, sizeof(linha), arq);
-        fputs(linha, temp);
-
-        while (fscanf(arq, "%d;%[^;];%d", &a.cod, a.nome, &a.status) == 3) {
-            if (a.cod != mat){   
-                fprintf(temp,"%d;%s;%d\n", a.cod, a.nome, a.status);
-                
-            }
-            else {
-                printf("Usuario Excluido com sucesso\n");
-                excluido = 1;
-            }
-                
         }
-    
-        fclose(arq);
-        fclose(temp);
+        fclose(f);
+    }
+    if (pend) { printf("Exclusao negada: emprestimo pendente.\n"); return; }
 
-        if (excluido) {
-            excluirArquivo(1);
-        } else {
-            remove(ARQ_TEMP);
-            printf("Usuário de Cod:%d nao encontrado.\n", mat);
-            garantir_arquivo();
-        }
-            break;
-        
-        default:
-            printf("Error, na Etapa de Exclusão");
-            break;
-        }
-    
-    
+    /* copia tudo, menos a linha do codigo */
+    f = fopen(ARQUIVOS[tipo], "r");
+    FILE *t = fopen(ARQ_TEMP, "w");
+    if (!f || !t) {
+        printf("Erro ao abrir os arquivos.\n");
+        if (f) fclose(f);
+        if (t) fclose(t);
+        return;
+    }
+    fgets(linha, sizeof(linha), f);
+    fputs(linha, t);
+    while (fgets(linha, sizeof(linha), f)) {
+        if (atoi(linha) == cod) achou = 1;
+        else if (linha[0] != '\n') fputs(linha, t);
+    }
+    fclose(f);
+    fclose(t);
+
+    if (achou) { excluirArquivo(tipo); printf("Excluido com sucesso.\n"); }
+    else { remove(ARQ_TEMP); printf("Cod %d nao encontrado.\n", cod); }
 }
 
 int main(void){
@@ -1121,10 +1060,8 @@ int main(void){
             system("pause");
                 } while (op < 1 || op > 4);
             break;
-            
-      
       default:
         break;
       } 
-    } while (opcao != 's' || opcao != 'S'  );
+    } while (opcao != '5');
 }
